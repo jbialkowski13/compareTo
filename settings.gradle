@@ -1,0 +1,3 @@
+rootProject.name = 'auto-auto'
+include 'extension'
+

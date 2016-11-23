@@ -1,0 +1,84 @@
+buildscript {
+    repositories {
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+        mavenCentral()
+        jcenter()
+    }
+
+    dependencies {
+        classpath "net.ltgt.gradle:gradle-apt-plugin:0.9"
+        classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.3'
+    }
+}
+
+import org.gradle.internal.jvm.Jvm
+
+group 'whiter13'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: "net.ltgt.apt"
+
+// disable default jar tasks
+configurations.runtime.artifacts.removeAll { it.archiveTask.is jar }
+tasks.getByName('jar').enabled = false
+
+// create extra configuration for shaded dependencies, so they're not included in the pom
+def shadedConfig = configurations.create('compileShaded');
+configurations.compileOnly.extendsFrom(shadedConfig)
+configurations.testCompile.extendsFrom(shadedConfig)
+
+shadowJar {
+    classifier = ''
+    configurations = [shadedConfig]
+
+    relocate 'com.google.common', 'autovaluewith.shaded.com.google.common'
+    relocate 'com.google.auto.common', 'autovaluewith.shaded.com.google.auto.common'
+    relocate 'com.google.thirdparty', 'autovaluewith.shaded.com.google.thirdparty'
+}
+
+artifacts {
+    runtime shadowJar
+    archives shadowJar
+}
+
+ext.deps = [
+        javapoet       : 'com.squareup:javapoet:1.7.0',
+        auto_value     : 'com.google.auto.value:auto-value:1.3',
+        auto_common    : 'com.google.auto:auto-common:0.6',
+
+        auto_service   : 'com.google.auto.service:auto-service:1.0-rc2',
+
+        junit          : 'junit:junit:4.12',
+        truth          : 'com.google.truth:truth:0.30',
+        compile_testing: 'com.google.testing.compile:compile-testing:0.9',
+        jsr305         : 'com.google.code.findbugs:jsr305:3.0.1'
+]
+
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+
+    compile deps.javapoet
+    compile deps.auto_value
+
+    compile deps.auto_common
+
+    compile deps.jsr305
+
+    compileOnly deps.auto_service
+
+    testCompile deps.junit
+    testCompile deps.truth
+    testCompile deps.compile_testing
+    testCompile files(Jvm.current().getToolsJar())
+}
