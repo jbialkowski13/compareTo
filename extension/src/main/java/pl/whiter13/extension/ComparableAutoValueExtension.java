@@ -21,6 +21,8 @@ import static pl.whiter13.extension.ElementUtil.getSuperClass;
 @AutoService(AutoValueExtension.class)
 public class ComparableAutoValueExtension extends AutoValueExtension {
 
+    private CompareToMethod compareToMethod;
+
     @Override
     public boolean applicable(Context context) {
 
@@ -30,13 +32,21 @@ public class ComparableAutoValueExtension extends AutoValueExtension {
 
         final List<? extends TypeMirror> interfaces = context.autoValueClass().getInterfaces();
 
-        return isFullyAssignable(context, typeUtils, comparable, interfaces);
+        final boolean implementingComparable = isImplementingComparable(context, typeUtils, comparable, interfaces);
+
+        if (implementingComparable) {
+            compareToMethod = CompareToMethod.getCompareToMethod(context);
+
+            return compareToMethod.isValid();
+        }
+
+        return false;
     }
 
-    private boolean isFullyAssignable(Context context,
-                                      Types typeUtils,
-                                      TypeMirror comparable,
-                                      List<? extends TypeMirror> interfaces) {
+    private boolean isImplementingComparable(Context context,
+                                             Types typeUtils,
+                                             TypeMirror comparable,
+                                             List<? extends TypeMirror> interfaces) {
 
         for (TypeMirror singleInterface : interfaces) {
 
@@ -97,7 +107,7 @@ public class ComparableAutoValueExtension extends AutoValueExtension {
                 .addTypeVariables(Arrays.asList(typeVariables))
                 .superclass(getSuperClass(context.packageName(), classToExtend, typeVariables))
                 .addMethod(ElementUtil.newConstructor(context.properties()))
-                .addMethod(generateCompareToMethod(context).toMethodSpec());
+                .addMethod(compareToMethod.toMethodSpec());
 
         final JavaFile javaFile = JavaFile
                 .builder(context.packageName(),
@@ -111,9 +121,5 @@ public class ComparableAutoValueExtension extends AutoValueExtension {
     @Override
     public boolean mustBeFinal(Context context) {
         return false;
-    }
-
-    private CompareToMethod generateCompareToMethod(Context context) {
-        return CompareToMethod.getCompareToMethod(context);
     }
 }
